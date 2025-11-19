@@ -2,8 +2,8 @@ import sqlite3
 from datetime import datetime, timedelta
 
 class FinanceSystem:
-    def __init__(self):
-        self.db_path = "school.db"
+    def __init__(self, db_path):
+        self.db_path = db_path
 
     # --- 1. دوال الإحصائيات (Dashboard Stats) ---
     def get_daily_stats(self):

@@ -1,3 +1,0 @@
-flet
-fpdf2
-python-dateutil
