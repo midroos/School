@@ -1,21 +1,22 @@
 import sqlite3
+import os
 from datetime import datetime, timedelta
 
 class FinanceSystem:
     def __init__(self):
-        self.db_path = "school.db"
+        self.db_path = os.path.join(os.path.dirname(__file__), 'school.db')
 
     # --- 1. دوال الإحصائيات (Dashboard Stats) ---
     def get_daily_stats(self):
         conn = sqlite3.connect(self.db_path)
         cur = conn.cursor()
-        
+
         today_date = datetime.now().strftime("%Y-%m-%d")
-        
+
         # 1. إجمالي إيراد اليوم
         cur.execute("SELECT SUM(amount) FROM transactions WHERE date LIKE ? || '%' AND type='payment'", (today_date,))
         daily_total = cur.fetchone()[0] or 0.0
-        
+
         # 2. حركات اليوم (أحدث 10 حركات)
         cur.execute("""
             SELECT t.date, s.name, t.amount, t.payment_method
@@ -29,11 +30,11 @@ class FinanceSystem:
 
         # 3. عدد الأقساط المتأخرة
         cur.execute("""
-            SELECT COUNT(id) FROM installments 
+            SELECT COUNT(id) FROM installments
             WHERE due_date < ? AND status = 'pending'
         """, (today_date,))
         overdue_count = cur.fetchone() or (0,)
-        
+
         conn.close()
         return daily_total, daily_transactions, overdue_count
 
@@ -45,26 +46,26 @@ class FinanceSystem:
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
         except ValueError:
             return False, "صيغة التاريخ غير صحيحة (YYYY-MM-DD)."
-            
+
         if installments_count <= 0 or total_fees <= 0:
             return False, "العدد والمبلغ يجب أن يكونا أكبر من صفر."
 
         monthly_amount = total_fees / installments_count
-        
+
         conn = sqlite3.connect(self.db_path)
         cur = conn.cursor()
-        
+
         try:
             for i in range(installments_count):
-                due_date = (start_date + timedelta(days=30 * i)).strftime("%Y-%m-%d") 
-                
+                due_date = (start_date + timedelta(days=30 * i)).strftime("%Y-%m-%d")
+
                 cur.execute("""INSERT INTO installments (student_id, sequence, amount, due_date, status)
-                               VALUES (?, ?, ?, ?, 'pending')""", 
+                               VALUES (?, ?, ?, ?, 'pending')""",
                                (student_id, i + 1, monthly_amount, due_date))
-            
+
             conn.commit()
             return True, f"تم توليد {installments_count} قسطاً للطالب بنجاح."
-            
+
         except Exception as e:
             conn.rollback()
             return False, f"خطأ في قاعدة البيانات أثناء توليد الأقساط: {str(e)}"
@@ -92,29 +93,29 @@ class FinanceSystem:
         """تسجيل دفعة وتحديث حالة القسط"""
         conn = sqlite3.connect(self.db_path)
         cur = conn.cursor()
-        
+
         try:
             cur.execute("SELECT student_id, amount FROM installments WHERE id=?", (installment_id,))
             inst_data = cur.fetchone()
             if not inst_data:
                 return False, "القسط غير موجود."
-            
+
             student_id, required_amount = inst_data
 
             # 1. تحديث حالة القسط إلى 'paid'
-            cur.execute("UPDATE installments SET status='paid', paid_amount=?, paid_date=? WHERE id=?", 
+            cur.execute("UPDATE installments SET status='paid', paid_amount=?, paid_date=? WHERE id=?",
                         (amount, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), installment_id))
-            
+
             # 2. تسجيل الحركة في جدول transactions
             cur.execute("""
                 INSERT INTO transactions (student_id, date, amount, type, description, payment_method)
                 VALUES (?, ?, ?, 'payment', ?, ?)
-            """, (student_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), amount, 
+            """, (student_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), amount,
                   f"قسط رقم {installment_id} للطالب {student_name}", method))
-            
+
             conn.commit()
             return True, f"تم تسجيل الدفع بنجاح. المبلغ: {amount:,.2f}"
-            
+
         except Exception as e:
             conn.rollback()
             return False, f"خطأ في التسديد: {str(e)}"
@@ -138,7 +139,7 @@ class FinanceSystem:
         cur = conn.cursor()
         try:
             cur.execute("""INSERT INTO students (name, grade, academic_year, parent_phone, created_at)
-                           VALUES (?, ?, ?, ?, ?)""", 
+                           VALUES (?, ?, ?, ?, ?)""",
                            (name, grade, academic_year, parent_phone, datetime.now().strftime("%Y-%m-%d")))
             conn.commit()
             return True, f"تم إضافة الطالب: {name} بنجاح."
@@ -170,7 +171,7 @@ class FinanceSystem:
         cur.execute("SELECT id, name, grade, academic_year, parent_phone FROM students WHERE id=?", (student_id,))
         data = cur.fetchone()
         conn.close()
-        return data 
+        return data
 
     def get_all_students_for_management(self):
         """جلب كل بيانات الطلاب لجدول الإدارة"""
