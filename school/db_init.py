@@ -2,7 +2,8 @@ import sqlite3
 import os
 
 def init_db():
-    conn = sqlite3.connect('school.db')
+    db_path = os.path.join(os.path.dirname(__file__), 'school.db')
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     
     # 1. جدول الطلاب (students)
